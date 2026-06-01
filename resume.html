@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Nagaen Fazli — Resume</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      font-weight: 400;
+      line-height: 1.6;
+      color: #1a1a1a;
+      background: #f5f5f4;
+    }
+
+    /* ── TOP NAV BAR ── */
+    .topbar {
+      background: #fff;
+      border-bottom: 1px solid #e7e5e0;
+      padding: 12px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: #666;
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .back-link:hover { color: #1a1a1a; }
+    .back-link svg { width: 14px; height: 14px; }
+
+    .topbar-title {
+      font-size: 13px;
+      color: #999;
+      font-weight: 400;
+    }
+
+    /* ── PAGE ── */
+    .page-wrap {
+      max-width: 780px;
+      margin: 36px auto 60px;
+      padding: 0 20px;
+    }
+
+    .resume {
+      background: #fff;
+      border: 1px solid #e7e5e0;
+      border-radius: 10px;
+      padding: 52px 56px;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+    }
+
+    /* ── HEADER ── */
+    .r-name {
+      font-size: 1.9rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: #1a1a1a;
+      margin-bottom: 6px;
+    }
+
+    .r-title {
+      font-size: 14px;
+      font-weight: 500;
+      color: #555;
+      margin-bottom: 14px;
+    }
+
+    .r-contact {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      font-size: 12.5px;
+      color: #666;
+      margin-bottom: 28px;
+    }
+
+    .r-contact a {
+      color: #555;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: color 0.15s;
+    }
+
+    .r-contact a:hover { color: #1a1a1a; }
+    .r-contact svg { width: 12px; height: 12px; opacity: 0.55; }
+
+    /* ── DIVIDER ── */
+    .r-divider {
+      border: none;
+      border-top: 1px solid #e7e5e0;
+      margin: 22px 0;
+    }
+
+    /* ── SECTION TITLES ── */
+    h2.r-sec {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #999;
+      margin-bottom: 14px;
+    }
+
+    /* ── EXPERIENCE ── */
+    .r-job { margin-bottom: 22px; }
+
+    .r-job-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-bottom: 1px;
+    }
+
+    .r-company {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1a1a1a;
+    }
+
+    .r-location {
+      font-size: 12px;
+      color: #999;
+    }
+
+    .r-role-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-bottom: 7px;
+    }
+
+    .r-role {
+      font-size: 13px;
+      font-weight: 500;
+      color: #444;
+      font-style: italic;
+    }
+
+    .r-dates {
+      font-size: 12px;
+      color: #999;
+      white-space: nowrap;
+    }
+
+    .r-bullets {
+      list-style: none;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .r-bullets li {
+      font-size: 13px;
+      color: #444;
+      line-height: 1.6;
+      padding-left: 14px;
+      position: relative;
+    }
+
+    .r-bullets li::before {
+      content: '·';
+      position: absolute;
+      left: 2px;
+      color: #aaa;
+      font-size: 16px;
+      line-height: 1.4;
+    }
+
+    .role-gap { margin-top: 14px; }
+
+    /* ── TWO COL BOTTOM ── */
+    .r-two {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+    }
+
+    /* ── CERTS ── */
+    .r-cert { margin-bottom: 8px; }
+    .r-cert-name { font-size: 13px; font-weight: 500; color: #1a1a1a; }
+    .r-cert-date { font-size: 12px; color: #999; }
+
+    /* ── EDUCATION ── */
+    .r-edu-degree { font-size: 13px; font-weight: 600; color: #1a1a1a; }
+    .r-edu-detail { font-size: 12.5px; color: #666; margin-top: 2px; }
+
+    /* ── SKILLS ── */
+    .r-skills-list {
+      font-size: 12.5px;
+      color: #555;
+      line-height: 1.8;
+    }
+
+    /* ── PRINT ── */
+    @media print {
+      body { background: #fff; }
+      .topbar { display: none; }
+      .page-wrap { margin: 0; padding: 0; max-width: 100%; }
+      .resume { border: none; border-radius: 0; box-shadow: none; padding: 32px 40px; }
+    }
+
+    @media (max-width: 600px) {
+      .resume { padding: 32px 24px; }
+      .r-two { grid-template-columns: 1fr; gap: 0; }
+      .topbar { padding: 12px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <a href="../" class="back-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+      Back to Portfolio
+    </a>
+    <span class="topbar-title">Resume — Nagaen Fazli</span>
+  </div>
+
+  <div class="page-wrap">
+    <div class="resume">
+
+      <!-- HEADER -->
+      <div class="r-name">Nagaen Fazli</div>
+      <div class="r-title">Senior IT Systems Engineer</div>
+      <div class="r-contact">
+        <a href="mailto:nagaenf@gmail.com">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 7 10-7"/></svg>
+          nagaenf@gmail.com
+        </a>
+        <a href="tel:7039808172">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.82 12 19.79 19.79 0 0 1 1.72 3.37 2 2 0 0 1 3.7 1.18h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          703-980-8172
+        </a>
+        <a href="https://www.linkedin.com/in/nagaen-fazli/" target="_blank">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
+          linkedin.com/in/nagaen-fazli
+        </a>
+        <span>New York City Metropolitan Area</span>
+      </div>
+
+      <hr class="r-divider">
+
+      <!-- EXPERIENCE -->
+      <h2 class="r-sec">Experience</h2>
+
+      <!-- JUSTWORKS -->
+      <div class="r-job">
+        <div class="r-job-header">
+          <span class="r-company">Justworks</span>
+          <span class="r-location">New York, NY</span>
+        </div>
+
+        <div class="r-role-row">
+          <span class="r-role">Senior IT Systems Engineer</span>
+          <span class="r-dates">06/2025 – Present</span>
+        </div>
+        <ul class="r-bullets">
+          <li>Architected end-to-end identity lifecycle management across the enterprise using Okta Workflows, SCIM provisioning, and REST API integrations — automating onboarding/offboarding workflows and access reporting while reducing manual intervention at scale.</li>
+          <li>Partnered with InfoSec and business stakeholders to design and enforce RBAC and ABAC policies across departments using Okta, ensuring access controls met compliance and security requirements.</li>
+          <li>Led migration of 40+ applications into Okta Resource Access Centric Requests (RCAR), centralizing access governance and supporting SOC 2 Type II and SOX compliance by executing quarterly user access reviews and coordinating evidence collection with IT Audit and application owners.</li>
+          <li>Acted as technical owner for Google Workspace, Slack, Zoom, Jira, and Microsoft 365 — managing admin configurations, license governance, security settings, and Okta integration health.</li>
+          <li>Led incident response efforts from the IT Systems team for identity and access management incidents, coordinating triage and resolution across IT, Security, and Engineering while driving post-incident reviews and preventive improvements.</li>
+          <li>Mentored junior IT Systems Engineers through code reviews, knowledge sharing, and hands-on guidance, contributing to team growth and overall engineering quality.</li>
+        </ul>
+
+        <div class="role-gap">
+          <div class="r-role-row">
+            <span class="r-role">IT Systems Engineer</span>
+            <span class="r-dates">06/2023 – 06/2025</span>
+          </div>
+          <ul class="r-bullets">
+            <li>Led the implementation of 40+ Okta Single Sign-On (SSO) apps, ensuring seamless integration, user adoption and increased security.</li>
+            <li>Partnered with the IT Auditing team to conduct regular audits and user access reviews, ensuring compliance with SOC/SOX standards.</li>
+            <li>Designed and maintained automated workflows using Okta Workflows, Zapier, Jira, and BetterCloud to streamline identity lifecycle management and enhance operational efficiency.</li>
+          </ul>
+        </div>
+
+        <div class="role-gap">
+          <div class="r-role-row">
+            <span class="r-role">IT Support Engineer</span>
+            <span class="r-dates">08/2021 – 06/2023</span>
+          </div>
+          <ul class="r-bullets">
+            <li>Managed macOS endpoint fleet of 500+ devices via Jamf Pro, deploying OS updates, security baselines, and configuration profiles with a 96% first-push success rate.</li>
+            <li>Partnered with Security to pilot and deploy DLP and proxy agents company-wide, achieving full endpoint coverage across the organization.</li>
+            <li>Administered core SaaS stack — Google Workspace, Microsoft 365, Slack, Zoom, Jira, GitHub, and 1Password — for 1,000+ users, handling access changes, license optimization, and integration maintenance.</li>
+            <li>Managed hardware asset lifecycle including recycling and repurposing of IT equipment to maximize reuse and reduce cost.</li>
+            <li>Authored end-user and internal runbooks covering Okta MFA enrollment, macOS setup, and SaaS access requests, reducing repeat ticket volume on covered topics.</li>
+          </ul>
+        </div>
+      </div>
+
+      <hr class="r-divider">
+
+      <!-- LATCH -->
+      <div class="r-job">
+        <div class="r-job-header">
+          <span class="r-company">Latch</span>
+          <span class="r-location">New York, NY</span>
+        </div>
+        <div class="r-role-row">
+          <span class="r-role">Technical Support Associate</span>
+          <span class="r-dates">12/2020 – 08/2021</span>
+        </div>
+        <ul class="r-bullets">
+          <li>Managed incoming technical support tickets and calls via internal ticketing tools and phone. Resolved 60 tickets weekly with a 90%+ customer satisfaction rating.</li>
+          <li>Created documentation for new products and services offered.</li>
+          <li>Collaborated with engineering teams to report and resolve hardware & software bugs, coordinating, overseeing, and documenting resolutions.</li>
+        </ul>
+      </div>
+
+      <hr class="r-divider">
+
+      <!-- AWS -->
+      <div class="r-job">
+        <div class="r-job-header">
+          <span class="r-company">Amazon Web Services (AWS)</span>
+          <span class="r-location">Manassas, VA</span>
+        </div>
+        <div class="r-role-row">
+          <span class="r-role">IT Support Engineer</span>
+          <span class="r-dates">06/2019 – 12/2020</span>
+        </div>
+        <ul class="r-bullets">
+          <li>Diagnosed and remediated server hardware and firmware issues across AWS data center operations supporting US-East-1, maintaining availability for production customer workloads.</li>
+          <li>Deployed and configured network infrastructure — routers, switches, line cards, wave servers, and load balancers.</li>
+          <li>Served as on-call responder for multi-site large-scale events, coordinating with Network Engineering and other sites to restore service within SLA.</li>
+        </ul>
+      </div>
+
+      <hr class="r-divider">
+
+      <!-- APPLE -->
+      <div class="r-job">
+        <div class="r-job-header">
+          <span class="r-company">Apple</span>
+          <span class="r-location">Arlington, VA</span>
+        </div>
+        <div class="r-role-row">
+          <span class="r-role">Technical Specialist</span>
+          <span class="r-dates">07/2017 – 06/2019</span>
+        </div>
+        <ul class="r-bullets">
+          <li>Provided excellent customer service using Apple's core values to ease customers' concerns through effective solutions.</li>
+          <li>Resolved device issues through troubleshooting and diagnostic analysis across a range of hardware and software problems.</li>
+        </ul>
+      </div>
+
+      <hr class="r-divider">
+
+      <!-- CVENT -->
+      <div class="r-job">
+        <div class="r-job-header">
+          <span class="r-company">Cvent</span>
+          <span class="r-location">McLean, VA</span>
+        </div>
+        <div class="r-role-row">
+          <span class="r-role">IT Support Intern</span>
+          <span class="r-dates">06/2018 – 08/2018</span>
+        </div>
+        <ul class="r-bullets">
+          <li>Resolved desktop/laptop, speaker, and peripheral issues via ticketing system resulting in proper incident management.</li>
+          <li>Maintained IT inventory at headquarters and organized new equipment shipments.</li>
+          <li>Developed appointment system for HQ staff to schedule onsite technician appointments.</li>
+        </ul>
+      </div>
+
+      <hr class="r-divider">
+
+      <!-- CERTIFICATIONS + EDUCATION -->
+      <div class="r-two">
+        <div>
+          <h2 class="r-sec">Certifications</h2>
+          <div class="r-cert">
+            <div class="r-cert-name">Okta Certified Administrator</div>
+            <div class="r-cert-date">October 2024</div>
+          </div>
+          <div class="r-cert">
+            <div class="r-cert-name">Okta Certified Professional</div>
+            <div class="r-cert-date">October 2024</div>
+          </div>
+          <div class="r-cert">
+            <div class="r-cert-name">Jamf Certified Technician</div>
+            <div class="r-cert-date">2022</div>
+          </div>
+        </div>
+        <div>
+          <h2 class="r-sec">Education</h2>
+          <div class="r-edu-degree">B.S. in Information Technology</div>
+          <div class="r-edu-detail">Concentration in Cyber Security · Minor in Business</div>
+          <div class="r-edu-detail">George Mason University — Fairfax, VA</div>
+          <div class="r-edu-detail">08/2015 – 12/2019</div>
+        </div>
+      </div>
+
+      <hr class="r-divider">
+
+      <!-- SKILLS -->
+      <h2 class="r-sec">Skills & Technologies</h2>
+      <div class="r-skills-list">
+        Okta · Okta Workflows · SCIM Provisioning · REST APIs · RBAC / ABAC · SSO · IAM · Google Workspace · Microsoft 365 · Slack Admin · Zoom Admin · Jira · GitHub · Jamf Pro · BetterCloud · Zapier · 1Password · SOC 2 Type II · SOX Compliance · DLP · Incident Response · macOS Endpoint Management · Network Infrastructure · Access Governance
+      </div>
+
+    </div><!-- /resume -->
+  </div><!-- /page-wrap -->
+
+</body>
+</html>
