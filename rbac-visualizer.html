@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RBAC Policy Visualizer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    .node text { pointer-events: none; }
+    .rotate-text { writing-mode: vertical-rl; transform: rotate(180deg); }
+    .cell-btn { transition: background 0.15s, transform 0.1s; }
+    .cell-btn:active { transform: scale(0.9); }
+    #graph-svg { display: block; }
+    .sidebar-scroll::-webkit-scrollbar { width: 4px; }
+    .sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
+    .sidebar-scroll::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 2px; }
+  </style>
+</head>
+<body class="bg-slate-50 min-h-screen flex flex-col overflow-hidden" style="height:100vh">
+
+  <!-- Header -->
+  <header class="bg-indigo-700 text-white px-6 py-3 flex items-center justify-between shadow-lg flex-shrink-0">
+    <div>
+      <h1 class="text-lg font-bold tracking-tight">RBAC Policy Visualizer</h1>
+      <p class="text-indigo-200 text-xs">Interactive role-permission mapping</p>
+    </div>
+    <div class="flex gap-2">
+      <button id="btn-load-sample" class="bg-indigo-500 hover:bg-indigo-400 px-3 py-1.5 rounded text-sm font-medium transition-colors">Load Sample</button>
+      <button id="btn-export" class="bg-white text-indigo-700 hover:bg-indigo-50 px-3 py-1.5 rounded text-sm font-medium transition-colors">Export JSON</button>
+      <button id="btn-clear" class="bg-red-500 hover:bg-red-400 px-3 py-1.5 rounded text-sm font-medium transition-colors">Clear All</button>
+    </div>
+  </header>
+
+  <!-- Body -->
+  <div class="flex flex-1 overflow-hidden">
+
+    <!-- Sidebar -->
+    <aside class="w-72 bg-white border-r border-slate-200 flex flex-col flex-shrink-0 shadow-sm">
+
+      <!-- Add Role -->
+      <div class="p-4 border-b border-slate-100">
+        <h2 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Add Role</h2>
+        <div class="flex gap-2">
+          <input id="input-role" type="text" placeholder="e.g. Software Engineer"
+            class="flex-1 border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent">
+          <button id="btn-add-role"
+            class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">Add</button>
+        </div>
+      </div>
+
+      <!-- Add Permission -->
+      <div class="p-4 border-b border-slate-100">
+        <h2 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Add Permission</h2>
+        <div class="flex flex-col gap-2">
+          <input id="input-perm" type="text" placeholder="e.g. repo:write"
+            class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent">
+          <div class="flex gap-2">
+            <input id="input-app" type="text" placeholder="App (e.g. GitHub)"
+              class="flex-1 border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent">
+            <button id="btn-add-perm"
+              class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">Add</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Roles List -->
+      <div class="p-4 border-b border-slate-100 overflow-y-auto sidebar-scroll" style="max-height: 220px">
+        <h2 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 flex items-center justify-between sticky top-0 bg-white pb-1">
+          Roles
+          <span id="roles-count" class="bg-indigo-100 text-indigo-700 text-xs px-2 py-0.5 rounded-full font-semibold">0</span>
+        </h2>
+        <ul id="roles-list" class="space-y-1"></ul>
+        <p id="roles-empty" class="text-slate-400 text-xs italic">No roles yet</p>
+      </div>
+
+      <!-- Permissions List -->
+      <div class="p-4 flex-1 overflow-y-auto sidebar-scroll">
+        <h2 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 flex items-center justify-between sticky top-0 bg-white pb-1">
+          Permissions
+          <span id="perms-count" class="bg-emerald-100 text-emerald-700 text-xs px-2 py-0.5 rounded-full font-semibold">0</span>
+        </h2>
+        <ul id="perms-list" class="space-y-1"></ul>
+        <p id="perms-empty" class="text-slate-400 text-xs italic">No permissions yet</p>
+      </div>
+    </aside>
+
+    <!-- Viz Area -->
+    <main class="flex-1 flex flex-col overflow-hidden">
+
+      <!-- View toggle bar -->
+      <div class="bg-white border-b border-slate-200 px-6 py-2.5 flex items-center justify-between flex-shrink-0">
+        <div class="flex rounded-lg overflow-hidden border border-slate-300">
+          <button id="btn-graph"
+            class="px-4 py-1.5 text-sm font-medium bg-indigo-600 text-white transition-colors">
+            Graph
+          </button>
+          <button id="btn-matrix"
+            class="px-4 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">
+            Matrix
+          </button>
+        </div>
+        <span id="viz-hint" class="text-slate-400 text-xs">Drag nodes · Scroll to zoom</span>
+      </div>
+
+      <!-- Graph View -->
+      <div id="view-graph" class="flex-1 overflow-hidden relative bg-slate-50">
+        <svg id="graph-svg" width="100%" height="100%"></svg>
+
+        <!-- Legend -->
+        <div class="absolute bottom-4 right-4 bg-white rounded-xl shadow-md px-3 py-2 flex flex-col gap-1.5 text-xs">
+          <div class="flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full bg-indigo-600 flex-shrink-0"></span>
+            <span class="text-slate-600">Role</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full bg-emerald-500 flex-shrink-0"></span>
+            <span class="text-slate-600">Permission</span>
+          </div>
+          <div id="legend-apps" class="flex flex-col gap-1.5 border-t border-slate-100 mt-1 pt-1.5"></div>
+        </div>
+
+        <!-- Empty state -->
+        <div id="graph-empty" class="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div class="text-center">
+            <div class="text-4xl mb-2">🔐</div>
+            <p class="text-slate-400 text-sm font-medium">Add roles and permissions to visualize</p>
+            <p class="text-slate-300 text-xs mt-1">or click <strong>Load Sample</strong> to get started</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Matrix View -->
+      <div id="view-matrix" class="flex-1 overflow-auto p-6 bg-slate-50 hidden">
+        <div id="matrix-container"></div>
+        <div id="matrix-empty" class="hidden flex items-center justify-center h-full">
+          <p class="text-slate-400 text-sm">Add roles and permissions to see the matrix</p>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script>
+  // ── State ──────────────────────────────────────────────────────────────────
+  let state = {
+    roles: [],
+    permissions: [],
+    assignments: new Set()
+  };
+
+  const SAMPLE = {
+    roles: [
+      { id: 'r1', name: 'Software Engineer' },
+      { id: 'r2', name: 'SRE' },
+      { id: 'r3', name: 'Manager' },
+      { id: 'r4', name: 'Data Analyst' },
+      { id: 'r5', name: 'Security Analyst' },
+    ],
+    permissions: [
+      { id: 'p1',  name: 'repo:read',              app: 'GitHub' },
+      { id: 'p2',  name: 'repo:write',             app: 'GitHub' },
+      { id: 'p3',  name: 'repo:admin',             app: 'GitHub' },
+      { id: 'p4',  name: 's3:GetObject',           app: 'AWS' },
+      { id: 'p5',  name: 'ec2:Describe*',          app: 'AWS' },
+      { id: 'p6',  name: 'rds:Connect',            app: 'AWS' },
+      { id: 'p7',  name: 'iam:ListUsers',          app: 'AWS' },
+      { id: 'p8',  name: 'read:users',             app: 'Okta' },
+      { id: 'p9',  name: 'manage:groups',          app: 'Okta' },
+      { id: 'p10', name: 'read:logs',              app: 'Splunk' },
+    ],
+    assignments: new Set([
+      'r1:p1','r1:p2','r1:p4',
+      'r2:p1','r2:p4','r2:p5','r2:p6',
+      'r3:p1','r3:p3','r3:p8','r3:p9',
+      'r4:p1','r4:p4','r4:p6',
+      'r5:p1','r5:p7','r5:p8','r5:p10',
+    ])
+  };
+
+  let currentView = 'graph';
+  let simulation = null;
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  const uid = () => Math.random().toString(36).slice(2, 9);
+
+  function esc(str) {
+    return String(str)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ── App colour palette ─────────────────────────────────────────────────────
+  const APP_COLORS = {};
+  const palette = ['#10b981','#f59e0b','#3b82f6','#ec4899','#8b5cf6','#ef4444','#14b8a6','#f97316'];
+  let colorIdx = 0;
+
+  function appColor(app) {
+    if (!APP_COLORS[app]) APP_COLORS[app] = palette[colorIdx++ % palette.length];
+    return APP_COLORS[app];
+  }
+
+  // ── View toggle ────────────────────────────────────────────────────────────
+  document.getElementById('btn-graph').addEventListener('click', () => switchView('graph'));
+  document.getElementById('btn-matrix').addEventListener('click', () => switchView('matrix'));
+
+  function switchView(view) {
+    currentView = view;
+    document.getElementById('view-graph').classList.toggle('hidden', view !== 'graph');
+    document.getElementById('view-matrix').classList.toggle('hidden', view !== 'matrix');
+    const active = 'px-4 py-1.5 text-sm font-medium bg-indigo-600 text-white transition-colors';
+    const inactive = 'px-4 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors';
+    document.getElementById('btn-graph').className = view === 'graph' ? active : inactive;
+    document.getElementById('btn-matrix').className = view === 'matrix' ? active : inactive;
+    document.getElementById('viz-hint').textContent = view === 'graph'
+      ? 'Drag nodes · Scroll to zoom'
+      : 'Click cells to toggle assignments';
+    if (view === 'graph') renderGraph();
+    else renderMatrix();
+  }
+
+  // ── Sidebar lists ──────────────────────────────────────────────────────────
+  function renderLists() {
+    const rolesList  = document.getElementById('roles-list');
+    const permsList  = document.getElementById('perms-list');
+    const rolesEmpty = document.getElementById('roles-empty');
+    const permsEmpty = document.getElementById('perms-empty');
+
+    document.getElementById('roles-count').textContent = state.roles.length;
+    document.getElementById('perms-count').textContent = state.permissions.length;
+
+    rolesEmpty.classList.toggle('hidden', state.roles.length > 0);
+    permsEmpty.classList.toggle('hidden', state.permissions.length > 0);
+
+    rolesList.innerHTML = state.roles.map(r => `
+      <li class="flex items-center justify-between group px-2 py-1.5 rounded-lg hover:bg-slate-50">
+        <span class="flex items-center gap-2 text-sm text-slate-700 truncate">
+          <span class="w-2 h-2 rounded-full bg-indigo-500 flex-shrink-0"></span>
+          <span class="truncate">${esc(r.name)}</span>
+        </span>
+        <button onclick="removeRole('${r.id}')"
+          class="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 text-xs ml-1 flex-shrink-0 transition-opacity">✕</button>
+      </li>`).join('');
+
+    permsList.innerHTML = state.permissions.map(p => `
+      <li class="flex items-center justify-between group px-2 py-1.5 rounded-lg hover:bg-slate-50">
+        <span class="flex items-center gap-2 text-sm truncate">
+          <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:${appColor(p.app)}"></span>
+          <span class="truncate">
+            <span class="text-slate-400 text-xs">[${esc(p.app)}]</span>
+            <span class="text-slate-700"> ${esc(p.name)}</span>
+          </span>
+        </span>
+        <button onclick="removePerm('${p.id}')"
+          class="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 text-xs ml-1 flex-shrink-0 transition-opacity">✕</button>
+      </li>`).join('');
+  }
+
+  // ── Add ────────────────────────────────────────────────────────────────────
+  function addRole() {
+    const input = document.getElementById('input-role');
+    const name = input.value.trim();
+    if (!name) return;
+    state.roles.push({ id: 'r' + uid(), name });
+    input.value = '';
+    refresh();
+  }
+
+  function addPerm() {
+    const nameInput = document.getElementById('input-perm');
+    const appInput  = document.getElementById('input-app');
+    const name = nameInput.value.trim();
+    const app  = appInput.value.trim() || 'General';
+    if (!name) return;
+    state.permissions.push({ id: 'p' + uid(), name, app });
+    nameInput.value = '';
+    appInput.value  = '';
+    refresh();
+  }
+
+  document.getElementById('btn-add-role').addEventListener('click', addRole);
+  document.getElementById('btn-add-perm').addEventListener('click', addPerm);
+  document.getElementById('input-role').addEventListener('keydown', e => { if (e.key === 'Enter') addRole(); });
+  document.getElementById('input-perm').addEventListener('keydown', e => { if (e.key === 'Enter') addPerm(); });
+  document.getElementById('input-app').addEventListener('keydown',  e => { if (e.key === 'Enter') addPerm(); });
+
+  // ── Remove ─────────────────────────────────────────────────────────────────
+  function removeRole(id) {
+    state.roles = state.roles.filter(r => r.id !== id);
+    state.assignments = new Set([...state.assignments].filter(a => !a.startsWith(id + ':')));
+    refresh();
+  }
+
+  function removePerm(id) {
+    state.permissions = state.permissions.filter(p => p.id !== id);
+    state.assignments = new Set([...state.assignments].filter(a => !a.endsWith(':' + id)));
+    refresh();
+  }
+
+  // ── Sample / Export / Clear ────────────────────────────────────────────────
+  document.getElementById('btn-load-sample').addEventListener('click', () => {
+    state = {
+      roles: SAMPLE.roles.map(r => ({ ...r })),
+      permissions: SAMPLE.permissions.map(p => ({ ...p })),
+      assignments: new Set(SAMPLE.assignments)
+    };
+    refresh();
+  });
+
+  document.getElementById('btn-export').addEventListener('click', () => {
+    const data = {
+      roles: state.roles,
+      permissions: state.permissions,
+      assignments: [...state.assignments].map(a => {
+        const [roleId, permId] = a.split(':');
+        return { roleId, permId };
+      })
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = 'rbac-policy.json'; a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  document.getElementById('btn-clear').addEventListener('click', () => {
+    if (!confirm('Clear all roles, permissions, and assignments?')) return;
+    state = { roles: [], permissions: [], assignments: new Set() };
+    refresh();
+  });
+
+  // ── Graph ──────────────────────────────────────────────────────────────────
+  function renderGraph() {
+    if (simulation) { simulation.stop(); simulation = null; }
+
+    const svg = d3.select('#graph-svg');
+    svg.selectAll('*').remove();
+
+    const el    = document.getElementById('view-graph');
+    const W     = el.clientWidth;
+    const H     = el.clientHeight;
+    const empty = document.getElementById('graph-empty');
+
+    const hasData = state.roles.length > 0 || state.permissions.length > 0;
+    empty.classList.toggle('hidden', hasData);
+    if (!hasData) return;
+
+    const nodes = [
+      ...state.roles.map(r => ({ ...r, type: 'role' })),
+      ...state.permissions.map(p => ({ ...p, type: 'perm' }))
+    ];
+
+    const links = [...state.assignments].flatMap(a => {
+      const [roleId, permId] = a.split(':');
+      if (nodes.find(n => n.id === roleId) && nodes.find(n => n.id === permId))
+        return [{ source: roleId, target: permId }];
+      return [];
+    });
+
+    // Assign initial positions
+    const roleCount = state.roles.length;
+    const permCount = state.permissions.length;
+    nodes.forEach((n, i) => {
+      if (n.type === 'role') {
+        const angle = (i / roleCount) * 2 * Math.PI;
+        n.x = W / 2 + 140 * Math.cos(angle);
+        n.y = H / 2 + 140 * Math.sin(angle);
+      } else {
+        const pi = i - roleCount;
+        const angle = (pi / permCount) * 2 * Math.PI;
+        n.x = W / 2 + 280 * Math.cos(angle);
+        n.y = H / 2 + 280 * Math.sin(angle);
+      }
+    });
+
+    const g = svg.append('g');
+
+    svg.call(
+      d3.zoom()
+        .scaleExtent([0.2, 4])
+        .on('zoom', e => g.attr('transform', e.transform))
+    );
+
+    // Links
+    const link = g.append('g')
+      .selectAll('line')
+      .data(links)
+      .join('line')
+      .attr('stroke', '#cbd5e1')
+      .attr('stroke-width', 1.5)
+      .attr('stroke-opacity', 0.7);
+
+    // Nodes
+    const node = g.append('g')
+      .selectAll('g')
+      .data(nodes)
+      .join('g')
+      .attr('cursor', 'grab')
+      .call(
+        d3.drag()
+          .on('start', (event, d) => {
+            if (!event.active) sim.alphaTarget(0.3).restart();
+            d.fx = d.x; d.fy = d.y;
+          })
+          .on('drag', (event, d) => { d.fx = event.x; d.fy = event.y; })
+          .on('end', (event, d) => {
+            if (!event.active) sim.alphaTarget(0);
+            d.fx = null; d.fy = null;
+          })
+      );
+
+    node.append('circle')
+      .attr('r', d => d.type === 'role' ? 22 : 15)
+      .attr('fill', d => d.type === 'role' ? '#4f46e5' : appColor(d.app))
+      .attr('stroke', '#fff')
+      .attr('stroke-width', 2.5)
+      .attr('filter', 'drop-shadow(0 2px 4px rgba(0,0,0,0.15))');
+
+    node.append('text')
+      .attr('dy', d => (d.type === 'role' ? 22 : 15) + 14)
+      .attr('text-anchor', 'middle')
+      .attr('font-size', '10px')
+      .attr('font-family', 'system-ui, sans-serif')
+      .attr('fill', '#374151')
+      .text(d => d.type === 'perm' ? `[${d.app}] ${d.name}` : d.name);
+
+    // Force simulation
+    const sim = d3.forceSimulation(nodes)
+      .force('link',      d3.forceLink(links).id(d => d.id).distance(150).strength(0.6))
+      .force('charge',    d3.forceManyBody().strength(-400))
+      .force('center',    d3.forceCenter(W / 2, H / 2))
+      .force('collision', d3.forceCollide().radius(d => d.type === 'role' ? 45 : 35))
+      .on('tick', () => {
+        link
+          .attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+          .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+        node.attr('transform', d => `translate(${d.x},${d.y})`);
+      });
+
+    simulation = sim;
+
+    // Legend apps
+    const apps = [...new Set(state.permissions.map(p => p.app))];
+    document.getElementById('legend-apps').innerHTML = apps.map(app => `
+      <div class="flex items-center gap-2">
+        <span class="w-3 h-3 rounded-full flex-shrink-0" style="background:${appColor(app)}"></span>
+        <span class="text-slate-600">${esc(app)}</span>
+      </div>`).join('');
+  }
+
+  // ── Matrix ─────────────────────────────────────────────────────────────────
+  function renderMatrix() {
+    const container = document.getElementById('matrix-container');
+
+    if (!state.roles.length || !state.permissions.length) {
+      container.innerHTML = `
+        <div class="flex items-center justify-center h-48">
+          <p class="text-slate-400 text-sm">Add at least one role and one permission to see the matrix</p>
+        </div>`;
+      return;
+    }
+
+    const apps = [...new Set(state.permissions.map(p => p.app))];
+    const sortedPerms = apps.flatMap(app => state.permissions.filter(p => p.app === app));
+
+    const assignCount = role =>
+      sortedPerms.filter(p => state.assignments.has(`${role.id}:${p.id}`)).length;
+
+    let html = `
+      <div class="overflow-x-auto rounded-xl shadow-sm border border-slate-200 bg-white">
+      <table class="border-collapse text-sm w-full">
+        <thead>
+          <tr>
+            <th class="sticky left-0 z-20 bg-slate-50 px-4 py-3 text-left font-semibold text-slate-600 border-b border-r border-slate-200 whitespace-nowrap min-w-48">
+              Role
+              <span class="text-slate-400 font-normal text-xs ml-1">(${state.roles.length})</span>
+            </th>`;
+
+    apps.forEach(app => {
+      const count = state.permissions.filter(p => p.app === app).length;
+      html += `
+        <th colspan="${count}" class="px-2 py-2 text-center text-xs font-bold border-b border-r border-slate-200 whitespace-nowrap" style="background:${appColor(app)}22; color:${appColor(app)}">
+          ${esc(app)}
+        </th>`;
+    });
+
+    html += `
+          <th class="sticky right-0 z-20 bg-slate-50 px-3 py-3 text-center text-xs font-semibold text-slate-500 border-b border-l border-slate-200 whitespace-nowrap">Assigned</th>
+        </tr>
+        <tr>
+          <th class="sticky left-0 z-20 bg-slate-50 border-b border-r border-slate-200"></th>`;
+
+    sortedPerms.forEach(p => {
+      html += `
+        <th class="px-1 py-2 border-b border-r border-slate-100 bg-slate-50">
+          <div class="rotate-text text-xs font-medium text-slate-600 whitespace-nowrap" style="max-height:90px">${esc(p.name)}</div>
+        </th>`;
+    });
+
+    html += `<th class="sticky right-0 z-20 bg-slate-50 border-b border-l border-slate-200"></th></tr></thead><tbody>`;
+
+    state.roles.forEach((role, ri) => {
+      const bg = ri % 2 === 0 ? 'bg-white' : 'bg-slate-50/50';
+      const count = assignCount(role);
+      const total = sortedPerms.length;
+      html += `
+        <tr class="${bg} hover:bg-indigo-50/40 transition-colors group">
+          <td class="sticky left-0 z-10 ${ri % 2 === 0 ? 'bg-white' : 'bg-slate-50'} group-hover:bg-indigo-50/40 px-4 py-2.5 font-medium text-slate-700 border-r border-slate-200 whitespace-nowrap">
+            <span class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-indigo-500 flex-shrink-0"></span>
+              ${esc(role.name)}
+            </span>
+          </td>`;
+
+      sortedPerms.forEach(perm => {
+        const key    = `${role.id}:${perm.id}`;
+        const active = state.assignments.has(key);
+        html += `
+          <td class="text-center border-r border-slate-100 p-1">
+            <button onclick="toggleAssignment('${role.id}','${perm.id}')"
+              class="cell-btn w-7 h-7 rounded-md text-xs font-bold transition-all
+                ${active
+                  ? 'bg-indigo-600 text-white shadow-sm hover:bg-indigo-700'
+                  : 'bg-slate-100 text-slate-300 hover:bg-indigo-100 hover:text-indigo-400'}"
+              title="${esc(role.name)} → ${esc(perm.name)}"
+            >${active ? '✓' : ''}</button>
+          </td>`;
+      });
+
+      const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+      html += `
+          <td class="sticky right-0 z-10 ${ri % 2 === 0 ? 'bg-white' : 'bg-slate-50'} group-hover:bg-indigo-50/40 px-3 py-2.5 border-l border-slate-200 text-center whitespace-nowrap">
+            <span class="text-xs font-semibold text-slate-600">${count}/${total}</span>
+            <div class="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mt-1 overflow-hidden">
+              <div class="h-full bg-indigo-500 rounded-full transition-all" style="width:${pct}%"></div>
+            </div>
+          </td>
+        </tr>`;
+    });
+
+    // Summary row
+    html += `
+        <tr class="bg-slate-100 font-semibold text-slate-600 text-xs border-t-2 border-slate-300">
+          <td class="sticky left-0 z-10 bg-slate-100 px-4 py-2 border-r border-slate-200">Total assignments</td>`;
+
+    sortedPerms.forEach(perm => {
+      const count = state.roles.filter(r => state.assignments.has(`${r.id}:${perm.id}`)).length;
+      const pct   = state.roles.length > 0 ? Math.round((count / state.roles.length) * 100) : 0;
+      html += `
+        <td class="text-center border-r border-slate-200 px-1 py-2">
+          <span class="text-xs text-slate-500">${count}</span>
+          <div class="w-6 h-1 bg-slate-300 rounded-full mx-auto mt-0.5 overflow-hidden">
+            <div class="h-full rounded-full" style="width:${pct}%; background:${appColor(perm.app)}"></div>
+          </div>
+        </td>`;
+    });
+
+    html += `<td class="sticky right-0 z-10 bg-slate-100 px-3 py-2 border-l border-slate-200 text-center text-xs text-slate-500">${state.assignments.size} total</td></tr>`;
+
+    html += '</tbody></table></div>';
+    container.innerHTML = html;
+  }
+
+  function toggleAssignment(roleId, permId) {
+    const key = `${roleId}:${permId}`;
+    if (state.assignments.has(key)) state.assignments.delete(key);
+    else state.assignments.add(key);
+    renderMatrix();
+  }
+
+  // ── Refresh ────────────────────────────────────────────────────────────────
+  function refresh() {
+    renderLists();
+    if (currentView === 'graph') renderGraph();
+    else renderMatrix();
+  }
+
+  // Redraw graph on resize
+  window.addEventListener('resize', () => {
+    if (currentView === 'graph') renderGraph();
+  });
+
+  // ── Init ───────────────────────────────────────────────────────────────────
+  refresh();
+  </script>
+</body>
+</html>
