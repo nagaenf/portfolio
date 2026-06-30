@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>OIDC Flow Animator — Nagaen Fazli</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      font-weight: 400;
+      font-size: 15px;
+      line-height: 1.6;
+      color: #1a1a1a;
+      background: #ffffff;
+    }
+
+    .page {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 48px 40px 80px;
+    }
+
+    /* ── NAV ── */
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 13px;
+      color: #999;
+      text-decoration: none;
+      margin-bottom: 32px;
+      transition: color 0.15s;
+    }
+    .back-link:hover { color: #1a1a1a; }
+
+    /* ── PAGE TITLE ── */
+    .page-title {
+      font-size: 1.7rem;
+      font-weight: 700;
+      color: #1a1a1a;
+      letter-spacing: -0.03em;
+      margin-bottom: 8px;
+    }
+    .page-subtitle {
+      font-size: 14px;
+      color: #555;
+      line-height: 1.65;
+      border-bottom: 1px solid #e7e5e0;
+      padding-bottom: 24px;
+      margin-bottom: 24px;
+    }
+
+    /* ── FLOW TABS ── */
+    .flow-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    .flow-tab {
+      display: inline-flex;
+      align-items: center;
+      background: #f5f5f4;
+      border: 1px solid #e7e5e0;
+      border-radius: 6px;
+      padding: 6px 14px;
+      font-size: 13px;
+      font-family: 'Inter', sans-serif;
+      color: #555;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+    .flow-tab:hover:not(.active) { background: #ede9e3; color: #1a1a1a; }
+    .flow-tab.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+
+    /* ── ANIMATOR GRID ── */
+    .animator-grid {
+      display: grid;
+      grid-template-columns: 1fr 272px;
+      gap: 20px;
+      align-items: start;
+    }
+
+    /* ── DIAGRAM PANEL ── */
+    .diagram-panel {
+      border: 1px solid #e7e5e0;
+      border-radius: 8px;
+      height: 500px;
+      overflow: hidden;
+      background: #fff;
+    }
+    #diagram-svg { display: block; }
+
+    /* ── DETAILS PANEL ── */
+    .details-panel {
+      border: 1px solid #e7e5e0;
+      border-radius: 8px;
+      height: 500px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .details-meta {
+      padding: 14px 16px;
+      border-bottom: 1px solid #e7e5e0;
+      background: #fafaf9;
+      flex-shrink: 0;
+    }
+    .flow-badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      color: #777;
+      background: #f0ede8;
+      border: 1px solid #e7e5e0;
+      border-radius: 4px;
+      padding: 2px 8px;
+      margin-bottom: 6px;
+      letter-spacing: 0.01em;
+    }
+    .flow-name {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: #1a1a1a;
+      margin-bottom: 4px;
+    }
+    .flow-subtitle-text {
+      font-size: 12px;
+      color: #777;
+      line-height: 1.55;
+    }
+
+    .details-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+    }
+    .details-body::-webkit-scrollbar { width: 4px; }
+    .details-body::-webkit-scrollbar-thumb { background: #e7e5e0; border-radius: 2px; }
+
+    /* ── STEP DETAIL CONTENT ── */
+    .step-num {
+      font-size: 11px;
+      font-weight: 600;
+      color: #bbb;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 6px;
+    }
+    .step-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1a1a1a;
+      margin-bottom: 6px;
+    }
+    .step-desc {
+      font-size: 12.5px;
+      color: #666;
+      line-height: 1.65;
+      margin-bottom: 12px;
+    }
+    .step-endpoint {
+      display: inline-block;
+      font-family: 'Menlo', 'Consolas', monospace;
+      font-size: 11px;
+      background: #1a1a1a;
+      color: #a3e635;
+      padding: 4px 10px;
+      border-radius: 5px;
+      margin-bottom: 12px;
+    }
+    .step-params {
+      border: 1px solid #e7e5e0;
+      border-radius: 6px;
+      overflow: hidden;
+      font-size: 11.5px;
+    }
+    .step-param {
+      padding: 8px 10px;
+      border-bottom: 1px solid #f0ede8;
+    }
+    .step-param:last-child { border-bottom: none; }
+    .step-param:nth-child(even) { background: #fafaf9; }
+    .param-key {
+      font-family: 'Menlo', 'Consolas', monospace;
+      font-weight: 600;
+      color: #4338ca;
+      font-size: 11px;
+    }
+    .param-val {
+      font-family: 'Menlo', 'Consolas', monospace;
+      color: #1a1a1a;
+      font-size: 11px;
+      margin-top: 2px;
+      word-break: break-all;
+    }
+    .param-note {
+      font-size: 11px;
+      color: #999;
+      margin-top: 2px;
+    }
+
+    /* ── CONTROLS ── */
+    .controls {
+      padding: 12px 16px;
+      border-top: 1px solid #e7e5e0;
+      background: #fafaf9;
+      flex-shrink: 0;
+    }
+    .controls-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .step-counter {
+      font-size: 12px;
+      color: #999;
+      font-weight: 500;
+    }
+    .btn-play {
+      font-family: 'Inter', sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      background: #f5f5f4;
+      border: 1px solid #e7e5e0;
+      border-radius: 5px;
+      padding: 4px 10px;
+      color: #555;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .btn-play:hover { background: #ede9e3; color: #1a1a1a; }
+    .controls-btns {
+      display: flex;
+      gap: 8px;
+    }
+    .btn-nav {
+      flex: 1;
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 7px 0;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+    .btn-prev {
+      background: #fff;
+      border: 1px solid #e7e5e0;
+      color: #555;
+    }
+    .btn-prev:hover { background: #f5f5f4; color: #1a1a1a; }
+    .btn-next {
+      background: #1a1a1a;
+      border: 1px solid #1a1a1a;
+      color: #fff;
+    }
+    .btn-next:hover { background: #333; }
+    .controls-hint {
+      font-size: 11px;
+      color: #ccc;
+      text-align: center;
+      margin-top: 7px;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid #e7e5e0;
+      margin-top: 48px;
+      padding-top: 20px;
+      font-size: 12px;
+      color: #bbb;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 720px) {
+      .page { padding: 32px 20px 60px; }
+      .animator-grid { grid-template-columns: 1fr; }
+      .diagram-panel, .details-panel { height: 420px; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <a href="./index.html" class="back-link">← Nagaen Fazli</a>
+
+  <h1 class="page-title">OIDC Flow Animator</h1>
+  <p class="page-subtitle">
+    Step through the OpenID Connect Authorization Code and PKCE flows interactively.
+    Each step shows the exact HTTP request or response being exchanged between actors.
+  </p>
+
+  <!-- Flow tabs -->
+  <div class="flow-tabs">
+    <button id="tab-auth-code" class="flow-tab active" onclick="selectFlow('auth-code')">Authorization Code</button>
+    <button id="tab-pkce"      class="flow-tab"        onclick="selectFlow('pkce')">Auth Code + PKCE</button>
+  </div>
+
+  <!-- Animator grid -->
+  <div class="animator-grid">
+
+    <!-- Sequence diagram -->
+    <div class="diagram-panel" id="diagram-wrap">
+      <svg id="diagram-svg" width="100%" height="100%"></svg>
+    </div>
+
+    <!-- Details panel -->
+    <div class="details-panel">
+
+      <div class="details-meta">
+        <div class="flow-badge" id="flow-badge"></div>
+        <div class="flow-name"  id="flow-name"></div>
+        <div class="flow-subtitle-text" id="flow-subtitle"></div>
+      </div>
+
+      <div class="details-body">
+        <div id="step-detail"></div>
+      </div>
+
+      <div class="controls">
+        <div class="controls-top">
+          <span class="step-counter" id="step-counter"></span>
+          <button class="btn-play" id="btn-play" onclick="togglePlay()">▶ Play</button>
+        </div>
+        <div class="controls-btns">
+          <button class="btn-nav btn-prev" onclick="prevStep()">← Prev</button>
+          <button class="btn-nav btn-next" onclick="nextStep()">Next →</button>
+        </div>
+        <p class="controls-hint">← → arrow keys also work</p>
+      </div>
+    </div>
+
+  </div><!-- /animator-grid -->
+
+  <footer>
+    <span>Nagaen Fazli &nbsp;·&nbsp; OIDC Flow Animator</span>
+    <span>© 2026</span>
+  </footer>
+
+</div><!-- /page -->
+
+<script>
+// ── Flow data ────────────────────────────────────────────────────────────────
+const ACTOR_COLORS = {
+  user:   '#1e3a5f',
+  client: '#4f46e5',
+  auth:   '#7c3aed',
+  api:    '#0f766e',
+};
+
+const FLOWS = {
+  'auth-code': {
+    name: 'Authorization Code Flow',
+    badge: 'Server-side web apps',
+    subtitle: 'Most secure flow for traditional web apps with a backend. The client secret stays on the server and is never exposed to the browser.',
+    actors: [
+      { id: 'user',   label: ['User', 'Browser'],  color: ACTOR_COLORS.user   },
+      { id: 'client', label: ['Client', 'App'],     color: ACTOR_COLORS.client },
+      { id: 'auth',   label: ['Auth', 'Server'],    color: ACTOR_COLORS.auth   },
+      { id: 'api',    label: ['Resource', 'API'],   color: ACTOR_COLORS.api    },
+    ],
+    steps: [
+      { from: 'user', to: 'client', label: 'Login clicked',
+        detail: { title: 'User Initiates Login', desc: 'The user clicks "Sign In." The client app prepares to redirect to the authorization server.', params: null }},
+      { from: 'client', to: 'auth', label: 'Authorization Request',
+        detail: { title: 'Authorization Request', desc: 'Client redirects the browser to the authorization server\'s /authorize endpoint.', endpoint: 'GET /authorize',
+          params: [
+            { k: 'response_type', v: 'code',                             n: 'Request an authorization code' },
+            { k: 'client_id',     v: 'app-client-123',                   n: 'Identifies the application' },
+            { k: 'redirect_uri',  v: 'https://app.example.com/callback', n: 'Where to return the user' },
+            { k: 'scope',         v: 'openid profile email',             n: 'Permissions being requested' },
+            { k: 'state',         v: 'xK9mP2qR',                        n: 'Random value — prevents CSRF' },
+          ]}},
+      { from: 'auth', to: 'user', label: 'Login page',
+        detail: { title: 'Login UI Rendered', desc: 'Auth server presents its login UI — username/password form, MFA prompt, or SSO redirect.', params: null }},
+      { from: 'user', to: 'auth', label: 'Credentials + consent',
+        detail: { title: 'User Authenticates', desc: 'User submits credentials and completes MFA. Auth server may show a consent screen listing the requested scopes.', params: null }},
+      { from: 'auth', to: 'user', label: 'Redirect with auth code',
+        detail: { title: 'Authorization Code Issued', desc: 'Auth server redirects the browser to redirect_uri with a short-lived, single-use authorization code.', endpoint: 'HTTP 302 → redirect_uri',
+          params: [
+            { k: 'code',  v: 'SplxlOBeZQQYbYS6WxSbIA', n: 'Short-lived (~60s), single-use code' },
+            { k: 'state', v: 'xK9mP2qR',                n: 'Must match original — validates no CSRF' },
+          ]}},
+      { from: 'client', to: 'auth', label: 'Token request (back-channel)',
+        detail: { title: 'Token Exchange', desc: 'The client\'s backend sends the code to /token with its client secret. This is a direct server-to-server call — the browser is never involved.', endpoint: 'POST /token',
+          params: [
+            { k: 'grant_type',    v: 'authorization_code',                   n: '' },
+            { k: 'code',          v: 'SplxlOBeZQQYbYS6WxSbIA',               n: 'From previous step' },
+            { k: 'redirect_uri',  v: 'https://app.example.com/callback',     n: 'Must match original' },
+            { k: 'client_id',     v: 'app-client-123',                       n: '' },
+            { k: 'client_secret', v: '••••••••',                             n: 'Never exposed to browser' },
+          ]}},
+      { from: 'auth', to: 'client', label: 'Token bundle',
+        detail: { title: 'Tokens Returned', desc: 'Auth server validates the code and credentials, then returns a full token bundle stored securely server-side.', endpoint: '200 OK',
+          params: [
+            { k: 'access_token',  v: 'eyJhbGciOiJSUzI1NiJ9…', n: 'Present to the API to prove authorization' },
+            { k: 'id_token',      v: 'eyJhbGciOiJSUzI1NiJ9…', n: 'OIDC — JWT with user identity claims' },
+            { k: 'refresh_token', v: 'tGzv3JOkF0XG5Qx2…',      n: 'Get new access tokens without re-login' },
+            { k: 'expires_in',    v: '3600',                    n: 'Seconds until access_token expires' },
+          ]}},
+      { from: 'client', to: 'api', label: 'API call + Bearer token',
+        detail: { title: 'Calling the Resource API', desc: 'Client includes the access token in the Authorization header of every API request.', endpoint: 'GET /api/user/profile',
+          params: [
+            { k: 'Authorization', v: 'Bearer eyJhbGciOiJSUzI1NiJ9…', n: '' },
+          ]}},
+      { from: 'api', to: 'client', label: 'Protected resource',
+        detail: { title: 'API Response', desc: 'API validates token (signature, expiry, scope) and returns the protected resource.', endpoint: '200 OK',
+          params: [
+            { k: 'sub',   v: 'auth0|abc123',     n: 'Unique user ID from auth server' },
+            { k: 'email', v: 'user@company.com', n: '' },
+            { k: 'name',  v: 'Nagaen Fazli',     n: '' },
+          ]}},
+    ],
+  },
+
+  'pkce': {
+    name: 'Authorization Code + PKCE',
+    badge: 'SPAs & mobile apps',
+    subtitle: 'Proof Key for Code Exchange prevents auth code interception. Required for public clients that cannot keep a secret (SPAs, native apps).',
+    actors: [
+      { id: 'user',   label: ['User', 'Browser'],  color: ACTOR_COLORS.user   },
+      { id: 'client', label: ['Client', 'App'],     color: ACTOR_COLORS.client },
+      { id: 'auth',   label: ['Auth', 'Server'],    color: ACTOR_COLORS.auth   },
+      { id: 'api',    label: ['Resource', 'API'],   color: ACTOR_COLORS.api    },
+    ],
+    steps: [
+      { from: 'user', to: 'client', label: 'Login clicked',
+        detail: { title: 'User Initiates Login', desc: 'User clicks "Sign In." Client immediately generates the PKCE code pair.', params: null }},
+      { from: 'client', to: 'client', label: 'Generate PKCE pair (local)',
+        detail: { title: 'PKCE: Generate Code Verifier & Challenge', desc: 'Client generates a random code_verifier and derives code_challenge = BASE64URL(SHA-256(code_verifier)). This replaces the client_secret for public clients.',
+          params: [
+            { k: 'code_verifier',         v: 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_…', n: 'Random 43–128 char string, stored in memory' },
+            { k: 'code_challenge',        v: 'E9Melhoa2OwvFrEMTJguCHaoeK1t8…',   n: 'BASE64URL(SHA-256(code_verifier))' },
+            { k: 'code_challenge_method', v: 'S256',                               n: 'Always S256 — never use "plain"' },
+          ]}},
+      { from: 'client', to: 'auth', label: 'Authorization Request + challenge',
+        detail: { title: 'Authorization Request with PKCE', desc: 'Same as Auth Code, but includes code_challenge. The auth server stores it to verify later.', endpoint: 'GET /authorize',
+          params: [
+            { k: 'response_type',         v: 'code',                              n: '' },
+            { k: 'client_id',             v: 'spa-client-123',                    n: 'No client_secret — public client' },
+            { k: 'redirect_uri',          v: 'https://app.example.com/callback',  n: '' },
+            { k: 'scope',                 v: 'openid profile email',              n: '' },
+            { k: 'state',                 v: 'abc123',                            n: 'CSRF protection' },
+            { k: 'code_challenge',        v: 'E9Melhoa2OwvFrEMTJguCHaoeK1t8…',   n: 'Auth server stores this' },
+            { k: 'code_challenge_method', v: 'S256',                              n: '' },
+          ]}},
+      { from: 'auth', to: 'user', label: 'Login page',
+        detail: { title: 'Login Page Rendered', desc: 'Auth server stores the code_challenge and renders its login UI.', params: null }},
+      { from: 'user', to: 'auth', label: 'Credentials',
+        detail: { title: 'User Authenticates', desc: 'User submits credentials and completes MFA.', params: null }},
+      { from: 'auth', to: 'user', label: 'Redirect + code',
+        detail: { title: 'Authorization Code Returned', desc: 'Auth server issues a code tied to the stored code_challenge.', endpoint: 'HTTP 302 → redirect_uri',
+          params: [
+            { k: 'code',  v: 'SplxlOBeZQQYbYS6WxSbIA', n: '' },
+            { k: 'state', v: 'abc123',                   n: 'Client must verify this matches' },
+          ]}},
+      { from: 'client', to: 'auth', label: 'Token request + code_verifier',
+        detail: { title: 'Token Exchange with code_verifier', desc: 'Client sends the original code_verifier (not a secret). Auth server verifies SHA-256(code_verifier) == stored code_challenge.', endpoint: 'POST /token',
+          params: [
+            { k: 'grant_type',    v: 'authorization_code',               n: '' },
+            { k: 'code',          v: 'SplxlOBeZQQYbYS6WxSbIA',           n: '' },
+            { k: 'redirect_uri',  v: 'https://app.example.com/callback', n: '' },
+            { k: 'client_id',     v: 'spa-client-123',                   n: '' },
+            { k: 'code_verifier', v: 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_…', n: 'Auth verifies: SHA-256(this) == code_challenge' },
+          ]}},
+      { from: 'auth', to: 'client', label: 'Tokens',
+        detail: { title: 'Token Response', desc: 'Auth validates code_verifier and issues tokens.', endpoint: '200 OK',
+          params: [
+            { k: 'access_token',  v: 'eyJhbGciOiJSUzI1NiJ9…', n: '' },
+            { k: 'id_token',      v: 'eyJhbGciOiJSUzI1NiJ9…', n: 'OIDC user identity claims' },
+            { k: 'refresh_token', v: 'tGzv3JOkF0…',            n: '' },
+            { k: 'expires_in',    v: '3600',                    n: '' },
+          ]}},
+      { from: 'client', to: 'api', label: 'API call + Bearer token',
+        detail: { title: 'Calling the Resource API', desc: 'Client calls the API using the access token.', endpoint: 'GET /api/data',
+          params: [{ k: 'Authorization', v: 'Bearer eyJhbGciOiJSUzI1NiJ9…', n: '' }]}},
+      { from: 'api', to: 'client', label: 'Protected resource',
+        detail: { title: 'API Response', desc: 'API validates the token and returns the resource.', endpoint: '200 OK', params: null }},
+    ],
+  },
+};
+
+// ── State ────────────────────────────────────────────────────────────────────
+let currentFlow = 'auth-code';
+let currentStep = 0;
+let playInterval = null;
+
+// ── SVG rendering ────────────────────────────────────────────────────────────
+const NS = 'http://www.w3.org/2000/svg';
+
+function svgEl(tag, attrs = {}, text = null) {
+  const e = document.createElementNS(NS, tag);
+  Object.entries(attrs).forEach(([k, v]) => e.setAttribute(k, v));
+  if (text !== null) e.textContent = text;
+  return e;
+}
+
+function renderDiagram() {
+  const flow = FLOWS[currentFlow];
+  const svg  = document.getElementById('diagram-svg');
+  const wrap = document.getElementById('diagram-wrap');
+  const W    = wrap.clientWidth  || 620;
+  const H    = wrap.clientHeight || 500;
+
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.innerHTML = '';
+
+  const actors  = flow.actors;
+  const N       = actors.length;
+  const steps   = flow.steps;
+  const nSteps  = steps.length;
+
+  const margin   = 60;
+  const boxW     = Math.min(110, (W - 2 * margin) / N - 8);
+  const boxH     = 42;
+  const boxY     = 14;
+  const llY1     = boxY + boxH;
+  const llY2     = H - 14;
+  const stepY0   = llY1 + 34;
+  const stepYEnd = llY2 - 8;
+  const stepGap  = nSteps > 1 ? (stepYEnd - stepY0) / (nSteps - 1) : 0;
+
+  const xs    = actors.map((_, i) => N === 1 ? W / 2 : margin + i * (W - 2 * margin) / (N - 1));
+  const stepYs = steps.map((_, i) => stepY0 + i * stepGap);
+
+  // Arrow markers
+  const defs = svgEl('defs');
+  const mkMarker = (id, color) => {
+    const m = svgEl('marker', { id, markerWidth: '8', markerHeight: '8', refX: '7', refY: '3', orient: 'auto' });
+    m.appendChild(svgEl('path', { d: 'M0,0 L8,3 L0,6 Z', fill: color }));
+    return m;
+  };
+  defs.appendChild(mkMarker('arr-done',   '#c9c5be'));
+  defs.appendChild(mkMarker('arr-active', '#1a1a1a'));
+  svg.appendChild(defs);
+
+  // Lifelines
+  actors.forEach((_, i) => {
+    svg.appendChild(svgEl('line', {
+      x1: xs[i], y1: llY1, x2: xs[i], y2: llY2,
+      stroke: '#e7e5e0', 'stroke-width': 1.5, 'stroke-dasharray': '5 4',
+    }));
+  });
+
+  // Actor boxes
+  actors.forEach((actor, i) => {
+    const x = xs[i];
+    svg.appendChild(svgEl('rect', {
+      x: x - boxW / 2, y: boxY, width: boxW, height: boxH, rx: 7,
+      fill: actor.color,
+    }));
+    actor.label.forEach((line, li) => {
+      svg.appendChild(svgEl('text', {
+        x, y: boxY + (li === 0 ? 16 : 30),
+        'text-anchor': 'middle',
+        fill: li === 0 ? 'white' : 'rgba(255,255,255,0.75)',
+        'font-size': li === 0 ? '11' : '10',
+        'font-weight': li === 0 ? '600' : '400',
+        'font-family': 'Inter, system-ui, sans-serif',
+      }, line));
+    });
+  });
+
+  // Steps
+  steps.forEach((step, i) => {
+    if (i > currentStep) return;
+
+    const isActive = i === currentStep;
+    const isDone   = i < currentStep;
+    const lineColor = isActive ? '#1a1a1a' : '#c9c5be';
+    const y = stepYs[i];
+
+    const fromIdx = actors.findIndex(a => a.id === step.from);
+    const toIdx   = actors.findIndex(a => a.id === step.to);
+    const isSelf  = fromIdx === toIdx;
+    const fx      = xs[Math.max(0, fromIdx)];
+    const tx      = xs[Math.max(0, toIdx)];
+    const goRight = tx > fx;
+
+    if (isSelf) {
+      const path = svgEl('path', {
+        d: `M${fx},${y - 20} C${fx + 52},${y - 20} ${fx + 52},${y + 20} ${fx},${y + 20}`,
+        fill: 'none', stroke: lineColor, 'stroke-width': isActive ? 2 : 1.5,
+        'marker-end': `url(#arr-${isActive ? 'active' : 'done'})`,
+      });
+      if (isActive) {
+        path.style.strokeDasharray = 200;
+        path.style.strokeDashoffset = 200;
+        path.style.transition = 'stroke-dashoffset 0.5s ease';
+        svg.appendChild(path);
+        requestAnimationFrame(() => requestAnimationFrame(() => { path.style.strokeDashoffset = 0; }));
+      } else {
+        svg.appendChild(path);
+      }
+    } else {
+      const line = svgEl('line', {
+        x1: fx, y1: y, x2: tx, y2: y,
+        stroke: lineColor, 'stroke-width': isActive ? 2 : 1.5,
+        'marker-end': `url(#arr-${isActive ? 'active' : 'done'})`,
+      });
+      if (isActive) {
+        const len = Math.abs(tx - fx);
+        line.style.strokeDasharray = len;
+        line.style.strokeDashoffset = len;
+        line.style.transition = 'stroke-dashoffset 0.4s ease';
+        svg.appendChild(line);
+        requestAnimationFrame(() => requestAnimationFrame(() => { line.style.strokeDashoffset = 0; }));
+      } else {
+        svg.appendChild(line);
+      }
+    }
+
+    // Label
+    const midX      = isSelf ? fx + 36 : (fx + tx) / 2;
+    const labelY    = isSelf ? y : y - 7;
+    const labelText = step.label;
+    const bgW       = labelText.length * 5.8 + 14;
+
+    svg.appendChild(svgEl('rect', {
+      x: midX - bgW / 2, y: labelY - 12, width: bgW, height: 13, rx: 3,
+      fill: isActive ? '#f0ede8' : '#fafaf9',
+    }));
+    svg.appendChild(svgEl('text', {
+      x: midX, y: labelY - 2, 'text-anchor': 'middle',
+      fill: isActive ? '#1a1a1a' : '#a09d98',
+      'font-size': '9', 'font-weight': isActive ? '600' : '400',
+      'font-family': 'Inter, system-ui, sans-serif',
+    }, labelText));
+
+    // Step number bubble
+    const numX = isSelf ? fx - 16 : (goRight ? fx + 9 : fx - 9);
+    svg.appendChild(svgEl('circle', {
+      cx: numX, cy: y, r: 8,
+      fill: isActive ? '#1a1a1a' : (isDone ? '#e7e5e0' : '#f5f5f4'),
+    }));
+    svg.appendChild(svgEl('text', {
+      x: numX, y: y + 3.5, 'text-anchor': 'middle',
+      fill: isActive ? 'white' : (isDone ? '#888' : '#ccc'),
+      'font-size': '7.5', 'font-weight': '700',
+      'font-family': 'Inter, system-ui, sans-serif',
+    }, String(i + 1)));
+  });
+}
+
+// ── Step details ─────────────────────────────────────────────────────────────
+function renderDetail() {
+  const flow = FLOWS[currentFlow];
+  const step = flow.steps[currentStep];
+  const d    = step.detail;
+  const el   = document.getElementById('step-detail');
+
+  let html = '';
+  html += `<div class="step-num">Step ${currentStep + 1} of ${flow.steps.length}</div>`;
+  html += `<div class="step-title">${d.title}</div>`;
+  html += `<div class="step-desc">${d.desc}</div>`;
+
+  if (d.endpoint) {
+    html += `<div class="step-endpoint">${esc(d.endpoint)}</div>`;
+  }
+
+  if (d.params && d.params.length) {
+    html += `<div class="step-params">`;
+    d.params.forEach(p => {
+      html += `<div class="step-param">`;
+      if (p.k) html += `<div class="param-key">${esc(p.k)}</div>`;
+      if (p.v) html += `<div class="param-val">${esc(p.v)}</div>`;
+      if (p.n) html += `<div class="param-note">${esc(p.n)}</div>`;
+      html += `</div>`;
+    });
+    html += `</div>`;
+  }
+
+  el.innerHTML = html;
+}
+
+function renderCounter() {
+  const flow = FLOWS[currentFlow];
+  document.getElementById('step-counter').textContent = `Step ${currentStep + 1} / ${flow.steps.length}`;
+}
+
+function renderFlowMeta() {
+  const flow = FLOWS[currentFlow];
+  document.getElementById('flow-badge').textContent    = flow.badge;
+  document.getElementById('flow-name').textContent     = flow.name;
+  document.getElementById('flow-subtitle').textContent = flow.subtitle;
+}
+
+// ── Navigation ───────────────────────────────────────────────────────────────
+function nextStep() {
+  const max = FLOWS[currentFlow].steps.length - 1;
+  if (currentStep < max) { currentStep++; render(); }
+  else if (playInterval) stopPlay();
+}
+
+function prevStep() {
+  if (currentStep > 0) { currentStep--; render(); }
+}
+
+function selectFlow(flowKey) {
+  stopPlay();
+  currentFlow = flowKey;
+  currentStep = 0;
+  document.querySelectorAll('.flow-tab').forEach(b => b.classList.remove('active'));
+  const tab = document.getElementById('tab-' + flowKey);
+  if (tab) tab.classList.add('active');
+  render();
+}
+
+function togglePlay() {
+  if (playInterval) stopPlay(); else startPlay();
+}
+
+function startPlay() {
+  playInterval = setInterval(() => {
+    const max = FLOWS[currentFlow].steps.length - 1;
+    if (currentStep < max) { currentStep++; render(); }
+    else stopPlay();
+  }, 1800);
+  document.getElementById('btn-play').textContent = '⏸ Pause';
+}
+
+function stopPlay() {
+  clearInterval(playInterval);
+  playInterval = null;
+  document.getElementById('btn-play').textContent = '▶ Play';
+}
+
+function render() {
+  renderFlowMeta();
+  renderDiagram();
+  renderDetail();
+  renderCounter();
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Keyboard + resize ────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') nextStep();
+  if (e.key === 'ArrowLeft')  prevStep();
+  if (e.key === ' ') { e.preventDefault(); togglePlay(); }
+});
+window.addEventListener('resize', renderDiagram);
+
+render();
+</script>
+</body>
+</html>
